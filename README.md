@@ -29,12 +29,6 @@ This repository contains **sanitized, portfolio-grade documentation** for a priv
 | Testing & Quality | Test strategy and code quality practices |
 | Trade-offs & Future Work | Design decisions and roadmap |
 
-## What is intentionally NOT included
-
-- Source code
-- Secrets, environment variables, or credentials
-- Production endpoints or real domain names
-- Private infrastructure configuration
 
 ## Run docs locally
 
