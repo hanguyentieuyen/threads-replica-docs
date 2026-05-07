@@ -4,112 +4,21 @@ title: Features
 sidebar_position: 5
 ---
 
-# Features
+The feature surface is broad enough to show full-stack product thinking, but it is not presented as a production-complete social network. The table below focuses on verified capabilities and the visible boundary of the current version.
 
-## Authentication
+| Domain | Implemented scope | Current boundary |
+|---|---|---|
+| Auth | Register, login, logout, email verification, forgot password, reset password, change password, and Google OAuth callback support | Browser-first token storage and auth UX; public docs do not expose provider callbacks or secrets |
+| Feed and Posts | Create posts, fetch feed pages, view post detail, threaded replies, likes, reposts, bookmarks, and post-activity users | Feed pagination is page-based, not cursor-based; the client falls back from `following` to `for_you` when a new account has no followed users yet |
+| Profiles and Social Graph | View public profiles, edit own profile, follow and unfollow users, inspect followers/following, and browse a user's posts or replies | The current product scope focuses on direct social graph actions rather than advanced discovery or recommendation logic |
+| Search | User discovery UI is implemented in the web app; backend endpoints also support post text search and hashtag search/create | The current frontend router emphasizes user search more than post-search exploration |
+| Saved Posts | Dedicated saved-posts route backed by bookmark APIs | Saved content is private to the authenticated user and does not yet include richer collection or folder organization |
+| Notifications | Backend creates notifications for follow, like, repost, and comment events and exposes paginated retrieval APIs | No dedicated notifications screen is visible in the current frontend router |
+| Messaging | Inbox list, create or reuse conversation, paginated message history, optimistic sending, unread counts, mark-as-read, and realtime sync | Direct messages only; no group chat, typing indicator, attachments, edit, or delete flows |
+| Media | Authenticated image and video upload endpoints with optional object-storage integration | Media is infrastructure-ready, but the current version does not present a fully polished rich-media product layer |
 
-Users can create an account and log in using email and password credentials.
+## Product Maturity Notes
 
-| Feature | Description |
-|---|---|
-| Registration | Creates a new user account with hashed password |
-| Login | Validates credentials and issues access + refresh tokens |
-| Token refresh | Exchanges a valid refresh token for a new access token |
-| Logout | Invalidates the refresh token server-side |
-
-**Token lifecycle:**
-- Access token: short-lived (e.g., 15 minutes), sent in every API request header.
-- Refresh token: longer-lived, used only to obtain a new access token.
-
----
-
-## Posts
-
-Users can create short-form text posts similar to Threads.
-
-| Feature | Description |
-|---|---|
-| Create post | Authenticated user submits a text post |
-| View post | Fetch a single post with its metadata |
-| Delete post | Owner-only action to remove a post |
-| List posts by user | View all posts authored by a specific user |
-
----
-
-## Replies
-
-Posts can have nested replies, enabling threaded conversations.
-
-| Feature | Description |
-|---|---|
-| Create reply | Authenticated user replies to a post |
-| List replies | Fetch all replies for a given post |
-
----
-
-## Likes
-
-Users can express appreciation for posts.
-
-| Feature | Description |
-|---|---|
-| Like a post | Increments the like counter; records the user-post relationship |
-| Unlike a post | Removes the like; decrements the counter |
-| Like count display | Visible on each post card |
-
-Optimistic UI updates are applied on the client side so the like toggle feels instant.
-
----
-
-## Following system
-
-Users can follow other accounts to build a personalized feed.
-
-| Feature | Description |
-|---|---|
-| Follow a user | Creates a directed follow relationship |
-| Unfollow a user | Removes the follow relationship |
-| Following list | Lists accounts a user follows |
-| Follower count | Displayed on profile pages |
-
----
-
-## Following feed
-
-The home feed shows posts only from accounts the authenticated user follows.
-
-| Feature | Description |
-|---|---|
-| Feed retrieval | `GET /feed/following` — cursor-paginated |
-| Sort order | Reverse chronological (newest first) |
-| Scope | Limited to followed users |
-
-**Implementation notes:**
-- The query finds all `userId`s in the user's following list, then fetches recent posts where `authorId` is in that set.
-- Cursor-based pagination avoids the performance pitfalls of offset pagination on large datasets.
-
----
-
-## User profiles
-
-Each user has a public profile page.
-
-| Feature | Description |
-|---|---|
-| View public profile | Username, bio, post count, follower/following counts |
-| My profile | Same as public, but with edit controls |
-| Profile posts | Lists all posts by the user |
-
----
-
-## Planned features
-
-The following features are designed but **not yet implemented**:
-
-| Feature | Notes |
-|---|---|
-| Real-time notifications | Planned via Socket.IO or WebSocket |
-| In-app notification center | UI for likes, replies, new followers |
-| Push notifications | Future work |
-| Full-text search | Search posts and users |
-| Content moderation | Report / block users |
+- The backend already contains several domains that go beyond the visible minimum viable UI, especially notifications, hashtags, and post search.
+- The frontend is strongest around core social loops: feed, profile, saved posts, and direct messages.
+- Messaging should be understood as realtime 1-1 chat only in this version.

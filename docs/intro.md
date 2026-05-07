@@ -5,42 +5,43 @@ sidebar_position: 1
 slug: /
 ---
 
-# Introduction
+Threads Replica is a private full-stack portfolio project that recreates the core product loops of a modern social app: authentication, short-form posting, follows, search, saved posts, notifications, and direct messages.
 
-Welcome to the **Threads Replica** documentation — a sanitized, portfolio-grade write-up of a private full-stack social network project.
+This public documentation exists because the implementation repository stays private. The goal is to make the technical work reviewable without publishing source code, secrets, provider credentials, or internal deployment details.
 
-## What is Threads Replica?
+## What This Documentation Helps Reviewers Evaluate
 
-Threads Replica is a Threads-inspired social network clone built to practice and demonstrate full-stack engineering skills. It replicates the core social interactions found in modern social platforms: posting, replying, liking, following, and a personalized following feed.
+- Product scope and implementation boundaries
+- Frontend and backend architecture
+- Data modeling choices in MongoDB
+- API organization, auth flow, and realtime messaging
+- Testing strategy, trade-offs, and next steps
 
-> **Note:** The source code is intentionally kept private. This documentation provides a complete system overview — covering architecture, data model, API design, security, and engineering decisions — without exposing any proprietary code, secrets, or production configuration.
+## Current Project Scope
 
-## Goals
+- `threads-web`: a React 18 + TypeScript SPA built with Vite
+- `threads-api`: a Node.js + Express + TypeScript API backed by MongoDB
+- Core domains: auth, profiles, follows, feeds, posts, comments, reposts, bookmarks, search, notifications, media uploads, and 1-1 messaging
+- Realtime behavior: Socket.IO is used for direct-message updates and read-state synchronization
 
-- Implement core social features with a clean separation between frontend and backend.
-- Design a maintainable REST API using Express and Node.js.
-- Model social relationships and content in MongoDB.
-- Apply JWT-based authentication with access and refresh tokens.
-- Provide a production-like deployment on Vercel.
+## Deliberate Public Boundaries
 
-## Non-goals (current stage)
+- This repo documents the system but does not mirror the private source code.
+- It omits raw environment values, secrets, tokens, callback URLs, and internal operational links.
+- It stays close to the current codebase rather than older notes or screenshots when those disagree.
+- Messaging is documented as direct 1-1 chat only. Group chat is out of scope for the current version.
 
-- Complex ranking or recommendation algorithms.
-- Real-time notifications (planned — see [Trade-offs & Future Work](./tradeoffs-future)).
-- Full-text search (planned).
-- Multi-region or high-availability infrastructure.
+## How To Read The Docs
 
-## How to navigate this documentation
-
-| Section | What you will find |
+| Section | Focus |
 |---|---|
-| [Overview](./overview) | Project summary, key user flows, and screenshot references |
-| [Tech Stack](./tech-stack) | Technology choices and rationale |
-| [Architecture](./architecture) | High-level diagrams and component breakdown |
-| [Features](./features) | Detailed feature descriptions |
-| [Data Model](./data-model) | Conceptual entity-relationship diagram |
-| [API Contract](./api-contract) | Sanitized REST endpoint reference |
-| [Auth & Security](./auth-security) | JWT flow, token storage trade-offs, and mitigations |
-| [Deployment](./deployment) | Vercel deployment overview |
-| [Testing & Quality](./testing-quality) | Test strategy and code quality practices |
-| [Trade-offs & Future Work](./tradeoffs-future) | Design decisions and roadmap |
+| [Overview](./overview) | Product scope, main flows, and UI references |
+| [Tech Stack](./tech-stack) | Verified libraries and why they exist |
+| [Architecture](./architecture) | Request flow, service layering, and realtime design |
+| [Features](./features) | Implemented capabilities grouped by domain |
+| [Data Model](./data-model) | Core entities, relationships, and important enums |
+| [API Contract](./api-contract) | Route-group organization and response conventions |
+| [Auth & Security](./auth-security) | Token lifecycle, validation, and access control |
+| [Deployment](./deployment) | Runtime split, setup shape, and environment categories |
+| [Testing & Quality](./testing-quality) | Automated coverage, tooling, and current gaps |
+| [Trade-offs & Future Work](./tradeoffs-future) | Engineering judgment and next improvements |

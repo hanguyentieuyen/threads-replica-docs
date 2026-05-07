@@ -4,196 +4,63 @@ title: API Contract
 sidebar_position: 7
 ---
 
-# API Contract (Sanitized)
-
-> Base URL is intentionally omitted. All paths are relative. No production endpoints, secrets, or real domain names are included in this documentation.
+This page describes the public-safe shape of the API rather than reproducing the entire Swagger specification. It focuses on route grouping, auth patterns, and the conventions that matter when reviewing backend design.
 
 ## Conventions
 
-- All requests and responses use `Content-Type: application/json`.
-- Protected endpoints require an `Authorization: Bearer <access_token>` header.
-- Responses follow a consistent envelope:
-  ```json
-  { "data": <payload>, "error": null }
-  // or
-  { "data": null, "error": { "message": "...", "code": "..." } }
-  ```
-- Pagination uses cursor-based strategy: responses include a `nextCursor` field; pass `?cursor=<value>` on the next request.
+- Protected routes expect `Authorization: Bearer <access_token>`.
+- Successful responses consistently include a top-level `message` and `data`.
+- Paginated list endpoints use `page` and `limit` query parameters and return `total_page` inside `data`.
+- The backend is organized by route group rather than by a single monolithic controller.
 
----
+## Success Response Shape
 
-## Authentication
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/auth/register` | — | Create a new account |
-| `POST` | `/auth/login` | — | Log in and receive access + refresh tokens |
-| `POST` | `/auth/refresh` | — | Exchange a valid refresh token for new tokens |
-| `POST` | `/auth/logout` | ✓ | Invalidate the current refresh token |
-
-### POST /auth/register
-
-**Request body:**
 ```json
 {
-  "username": "string",
-  "email": "string",
-  "password": "string"
-}
-```
-
-**Response `201 Created`:**
-```json
-{
+  "message": "GET_POST_SUCCESS",
   "data": {
-    "user": { "id": "...", "username": "...", "email": "..." },
-    "accessToken": "...",
-    "refreshToken": "..."
+    "page": 1,
+    "limit": 10,
+    "total_page": 3,
+    "posts": []
   }
 }
 ```
 
-### POST /auth/login
+## Route Groups
 
-**Request body:**
-```json
-{ "email": "string", "password": "string" }
-```
-
-**Response `200 OK`:**
-```json
-{
-  "data": {
-    "user": { "id": "...", "username": "..." },
-    "accessToken": "...",
-    "refreshToken": "..."
-  }
-}
-```
-
-### POST /auth/refresh
-
-**Request body:**
-```json
-{ "refreshToken": "string" }
-```
-
-**Response `200 OK`:**
-```json
-{
-  "data": {
-    "accessToken": "...",
-    "refreshToken": "..."
-  }
-}
-```
-
----
-
-## Users & Profiles
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/users/:id` | — | Get a user's public profile |
-| `GET` | `/users/me` | ✓ | Get the authenticated user's profile |
-| `PATCH` | `/users/me` | ✓ | Update bio or avatar |
-
----
-
-## Posts
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/posts` | ✓ | Create a new post |
-| `GET` | `/posts/:id` | — | Get a single post |
-| `DELETE` | `/posts/:id` | ✓ (owner) | Delete a post |
-| `GET` | `/users/:id/posts` | — | List posts by a user |
-
-### POST /posts
-
-**Request body:**
-```json
-{ "content": "string (max 500 chars)" }
-```
-
-**Response `201 Created`:**
-```json
-{
-  "data": {
-    "id": "...",
-    "content": "...",
-    "authorId": "...",
-    "likeCount": 0,
-    "replyCount": 0,
-    "createdAt": "ISO-8601"
-  }
-}
-```
-
----
-
-## Replies
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/posts/:id/replies` | ✓ | Reply to a post |
-| `GET` | `/posts/:id/replies` | — | List replies for a post |
-
----
-
-## Feed
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/feed/following` | ✓ | Paginated posts from followed users |
-
-**Query parameters:**
-| Param | Type | Description |
+| Group | Representative endpoints | Notes |
 |---|---|---|
-| `cursor` | string | Opaque cursor from previous response |
-| `limit` | integer | Page size (default: 20, max: 50) |
+| `/auth` | `POST /register`, `POST /login`, `POST /refresh-token`, `POST /logout`, `POST /verify-email`, `POST /forgot-password`, `POST /verify-forgot-password`, `POST /reset-password`, `PUT /change-password`, `GET /oauth/google` | Covers browser auth lifecycle plus Google OAuth callback |
+| `/users` | `GET /me`, `PATCH /me`, `GET /:username`, `POST /follow`, `DELETE /follow/:user_id`, `GET /:user_id/followers`, `GET /:user_id/following`, `GET /:user_id/posts`, `GET /:user_id/replies`, `GET /:user_id/bookmarks`, `GET /` | Mixes profile, social graph, saved-post reads, and username search |
+| `/posts` | `GET /`, `POST /`, `GET /:post_id`, `GET /:post_id/activity`, `GET /:post_id/children`, `GET /:post_id/comments`, `POST or DELETE /:post_id/like`, `POST or DELETE /:post_id/repost`, `POST or DELETE /:post_id/bookmark`, `GET /:post_id/likes/users`, `GET /:post_id/reposts/users` | Central route group for feed, detail, and interaction APIs |
+| `/search` | `GET /?content=...&page=...&limit=...` | Post search backed by a MongoDB text index |
+| `/comments` | `POST /`, `PUT /:comment_id`, `DELETE /:comment_id`, `POST or DELETE /:comment_id/like` | Separate mutation group for comment writes |
+| `/medias` | `POST /upload-image`, `POST /upload-video` | Authenticated upload endpoints |
+| `/hashtags` | `GET /`, `POST /` | Search or create hashtags |
+| `/notifications` | `GET /` | Paginated notification retrieval |
+| `/conversations` | `GET /`, `POST /`, `GET /:conversation_id/messages`, `POST /:conversation_id/messages`, `POST /:conversation_id/read` | Inbox, message history, send, and read-state APIs |
+| `/static` | Static file access route group | Supports serving uploaded/static assets |
 
-**Response `200 OK`:**
-```json
-{
-  "data": {
-    "posts": [ { "id": "...", "content": "...", "author": {...}, "likeCount": 0, "createdAt": "..." } ],
-    "nextCursor": "...",
-    "hasMore": true
-  }
-}
-```
+## Pagination And Query Patterns
 
----
+| Pattern | Where it appears |
+|---|---|
+| `page` and `limit` pagination | Feed, followers, following, bookmarks, replies, search, notifications, conversations, messages |
+| `feed_type=following|for_you` | Home feed endpoint |
+| `post_type` filter | Child-post retrieval under a post |
+| Text search query params | Post search and user search |
 
-## Follows
+## REST And Realtime For Messaging
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/follows/:userId` | ✓ | Follow a user |
-| `DELETE` | `/follows/:userId` | ✓ | Unfollow a user |
-| `GET` | `/users/me/following` | ✓ | List accounts I follow |
-| `GET` | `/users/me/followers` | ✓ | List my followers |
+Messaging is intentionally hybrid:
 
----
+- REST endpoints create or fetch conversations and message pages.
+- Socket.IO pushes `chat:new_message` and `chat:conversation_read` after the database update completes.
+- REST remains the source of truth for pagination and persistence; sockets are used to reduce UI latency and keep inbox state fresh.
 
-## Likes
+## What This Page Intentionally Omits
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/posts/:id/like` | ✓ | Like a post |
-| `DELETE` | `/posts/:id/like` | ✓ | Unlike a post |
-
----
-
-## Error codes
-
-| HTTP Status | Code | Meaning |
-|---|---|---|
-| 400 | `VALIDATION_ERROR` | Request body/params failed validation |
-| 401 | `UNAUTHORIZED` | Missing or invalid access token |
-| 403 | `FORBIDDEN` | Authenticated but not permitted (e.g., delete another user's post) |
-| 404 | `NOT_FOUND` | Resource not found |
-| 409 | `CONFLICT` | Duplicate resource (e.g., already following, already liked) |
-| 429 | `RATE_LIMITED` | Too many requests |
-| 500 | `INTERNAL_ERROR` | Unexpected server error |
+- No raw tokens, production domains, or internal callback URLs
+- No full request or response dump for every endpoint
+- No attempt to duplicate the private Swagger site in public docs

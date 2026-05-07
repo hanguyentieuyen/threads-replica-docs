@@ -4,162 +4,70 @@ title: Data Model
 sidebar_position: 6
 ---
 
-# Data Model (Conceptual)
+This page summarizes the conceptual data model behind the private implementation. It keeps the real domain relationships intact while leaving out low-value internal details and raw operational configuration.
 
-> This section describes the conceptual data model. Field names, data types, and implementation details are intentionally simplified and do not reflect the private source code.
-
-## Entity-Relationship Diagram
+## Core Relationships
 
 ```mermaid
 erDiagram
-    USER {
-        string id PK
-        string username
-        string email
-        string passwordHash
-        string bio
-        string avatarUrl
-        datetime createdAt
-    }
+    USERS ||--o{ REFRESH_TOKENS : has
+    USERS ||--o{ POSTS : writes
+    USERS ||--o{ COMMENTS : writes
+    USERS ||--o{ FOLLOWS : follows
+    USERS ||--o{ POST_LIKES : likes
+    USERS ||--o{ POST_BOOKMARKS : saves
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ CONVERSATIONS : participates
+    USERS ||--o{ MESSAGES : sends
+    USERS ||--o{ MESSAGES : receives
 
-    POST {
-        string id PK
-        string authorId FK
-        string content
-        int likeCount
-        int replyCount
-        datetime createdAt
-    }
+    POSTS ||--o{ COMMENTS : has
+    POSTS ||--o{ POST_LIKES : has
+    POSTS ||--o{ POST_BOOKMARKS : has
+    POSTS ||--o{ POSTS : reposts_or_quotes
+    POSTS ||--o{ HASHTAGS : tags
 
-    REPLY {
-        string id PK
-        string postId FK
-        string authorId FK
-        string content
-        datetime createdAt
-    }
-
-    FOLLOW {
-        string id PK
-        string followerId FK
-        string followingId FK
-        datetime createdAt
-    }
-
-    LIKE {
-        string id PK
-        string userId FK
-        string postId FK
-        datetime createdAt
-    }
-
-    USER ||--o{ POST        : "authors"
-    USER ||--o{ REPLY       : "writes"
-    POST ||--o{ REPLY       : "has"
-    USER ||--o{ FOLLOW      : "follower"
-    USER ||--o{ FOLLOW      : "following"
-    USER ||--o{ LIKE        : "gives"
-    POST ||--o{ LIKE        : "receives"
+    CONVERSATIONS ||--o{ MESSAGES : contains
 ```
 
----
+## Entity Summary
 
-## Entity descriptions
-
-### User
-
-Represents an application account and its public profile.
-
-| Field | Purpose |
-|---|---|
-| `id` | Unique identifier |
-| `username` | Unique display name |
-| `email` | Login credential (unique) |
-| `passwordHash` | Bcrypt-hashed password (never returned in API responses) |
-| `bio` | Optional short biography |
-| `avatarUrl` | Reference to profile picture |
-| `createdAt` | Account creation timestamp |
-
----
-
-### Post
-
-A top-level content item created by a user.
-
-| Field | Purpose |
-|---|---|
-| `id` | Unique identifier |
-| `authorId` | Reference to the creating user |
-| `content` | Text content of the post |
-| `likeCount` | Denormalized counter for fast reads |
-| `replyCount` | Denormalized counter for fast reads |
-| `createdAt` | Timestamp used for feed ordering |
-
----
-
-### Reply
-
-A user's response to a post.
-
-| Field | Purpose |
-|---|---|
-| `id` | Unique identifier |
-| `postId` | The post being replied to |
-| `authorId` | The replying user |
-| `content` | Text content of the reply |
-| `createdAt` | Timestamp |
-
----
-
-### Follow
-
-A directed edge in the social graph: `follower → following`.
-
-| Field | Purpose |
-|---|---|
-| `id` | Unique identifier |
-| `followerId` | The user who follows |
-| `followingId` | The user being followed |
-| `createdAt` | Timestamp |
-
-A unique compound index on `(followerId, followingId)` prevents duplicate follow relationships.
-
----
-
-### Like
-
-Records a user's "like" on a post.
-
-| Field | Purpose |
-|---|---|
-| `id` | Unique identifier |
-| `userId` | The liking user |
-| `postId` | The liked post |
-| `createdAt` | Timestamp |
-
-A unique compound index on `(userId, postId)` ensures a user can only like a post once.
-
----
-
-## Indexing strategy (high-level)
-
-| Collection | Index | Purpose |
+| Entity | Purpose | Notable fields |
 |---|---|---|
-| Post | `(authorId, createdAt DESC)` | List posts by a user, newest first |
-| Post | `(createdAt DESC)` | Global timeline (future) |
-| Follow | `(followerId)` | Get all accounts a user follows |
-| Follow | `(followingId)` | Get all followers of a user |
-| Follow | `(followerId, followingId)` unique | Prevent duplicates, fast follow-status lookup |
-| Like | `(userId, postId)` unique | Prevent duplicates, fast like-status lookup |
-| Like | `(postId)` | Count/list likes per post |
+| `users` | Account, profile, and auth-adjacent user state | `verify`, `verify_email_token`, `forgot_password_token`, `username`, `avatar`, `post_circle` |
+| `refresh_tokens` | Server-side refresh token records | `token`, `user_id`, `iat`, `exp` |
+| `posts` | Top-level posts, reposts, and quote posts | `type`, `audience`, `parent_id`, `hashtags`, `mentions`, `medias`, `guest_views`, `user_views` |
+| `comments` | Replies inside post discussions, including nested child comments | `post_id`, `parent_id`, `content`, `like_count` |
+| `follows` | Directed follow graph | `user_id`, `followed_user_id` |
+| `post_likes` | User-to-post like relation | `user_id`, `post_id` |
+| `post_bookmarks` | User-to-post saved relation | `user_id`, `post_id` |
+| `hashtags` | Named tags attached to posts | `name` |
+| `notifications` | Activity records created by social events | `type`, `read`, `recipient_id`, `sender_id`, `resource_id`, `message` |
+| `conversations` | 1-1 chat metadata | `participant_ids`, `participant_key`, `members`, `last_message_preview`, `last_message_at` |
+| `messages` | Individual direct-message records | `conversation_id`, `sender_id`, `recipient_id`, `content`, `created_at` |
 
----
+## Important Domain Enums
 
-## Feed generation pattern
+| Enum | Meaning in the system |
+|---|---|
+| `UserVerifyStatus` | Whether an account has completed email verification |
+| `PostType` | Distinguishes normal posts, reposts, and quote posts |
+| `PostAudience` | Controls whether a post is public or limited to a smaller circle |
+| `FeedType` | Separates `following` from `for_you` feed reads |
+| `MediaType` | Distinguishes image and video uploads |
+| `NotificationType` | Follow, like, comment, and repost activity types |
 
-To build the following feed for user `U`:
+## Modeling Notes
 
-1. Query the `Follow` collection for all `followingId` values where `followerId = U`.
-2. Query the `Post` collection for documents where `authorId IN [followingIds]`, sorted by `createdAt DESC`, with cursor-based pagination.
+- Post visibility is not just public-versus-private. The `post_circle` and `PostAudience` fields allow a narrower "few someone" audience path in the current model.
+- Post counts such as likes, comments, reposts, and bookmarks are mostly derived in read pipelines instead of being stored directly on the base post document.
+- Chat data is more intentionally denormalized: conversation documents embed per-user unread state and last-message summary fields so the inbox can be rendered without re-querying message history for every row.
 
-This "fan-out on read" approach is straightforward and works well at the current scale. A precomputed timeline (fan-out on write) would be considered if read latency becomes a concern at larger scale — see [Trade-offs & Future Work](./tradeoffs-future).
+## Chat Model In Context
+
+The messaging feature uses two collections together:
+
+- `conversations` stores participant membership, per-user unread state, and inbox preview data.
+- `messages` stores the immutable text records that belong to each conversation.
+
+That split keeps direct-message history append-only while still making the inbox cheap to sort and render.

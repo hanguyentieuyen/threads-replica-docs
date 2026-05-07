@@ -4,136 +4,58 @@ title: Auth & Security
 sidebar_position: 8
 ---
 
-# Authentication & Security
+Threads Replica uses a browser-oriented JWT model with server-side refresh token records, email-based account flows, and access checks at both the REST and socket layers.
 
-## Authentication flow
+## Implemented Auth Flows
 
-Threads Replica uses a **JWT access + refresh token** scheme.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant SPA as React SPA
-    participant API as Express API
-    participant DB as MongoDB
-
-    User->>SPA: Enter credentials (email + password)
-    SPA->>API: POST /auth/login { email, password }
-    API->>DB: Find user by email
-    DB-->>API: User document
-    API->>API: Verify bcrypt hash
-    API->>API: Sign accessToken (short TTL)\n& refreshToken (long TTL)
-    API-->>SPA: { accessToken, refreshToken }
-    SPA->>SPA: Store both tokens in LocalStorage
-
-    note over SPA,API: Subsequent API calls
-
-    SPA->>API: GET /feed/following\nAuthorization: Bearer <accessToken>
-    API->>API: Verify JWT signature & expiry
-    API-->>SPA: 200 { data: posts }
-
-    note over SPA,API: When access token expires
-
-    SPA->>API: POST /auth/refresh { refreshToken }
-    API->>DB: Validate refresh token record
-    DB-->>API: Valid
-    API->>API: Issue new accessToken (+ rotate refreshToken)
-    API-->>SPA: { accessToken, refreshToken }
-    SPA->>SPA: Update stored tokens
-```
-
----
-
-## Token strategy
-
-| Property | Access Token | Refresh Token |
-|---|---|---|
-| Lifetime | Short (e.g., 15 min) | Longer (e.g., 7 days) |
-| Sent with | Every authenticated request | Only to `/auth/refresh` |
-| Storage | LocalStorage | LocalStorage |
-| Invalidation | Expiry | Server-side record deletion (logout) |
-
-### Refresh token rotation
-
-On each refresh, a new refresh token is issued and the old one is invalidated. This limits the window of exposure if a refresh token is ever leaked.
-
----
-
-## Token storage: LocalStorage
-
-### Current implementation
-
-Both tokens are stored in **LocalStorage** for simplicity. This is a widely used pattern for SPAs and works well when XSS vulnerabilities are properly mitigated.
-
-### Security implications
-
-Storing tokens in LocalStorage means any JavaScript running on the page can read them. The primary attack vector is **Cross-Site Scripting (XSS)**.
-
-### Mitigations applied
-
-| Mitigation | Description |
+| Flow | Verified behavior |
 |---|---|
-| Input sanitization | All user-supplied content is sanitized before storage and before rendering |
-| Output encoding | Content is rendered through React's JSX (which escapes HTML by default) — `dangerouslySetInnerHTML` is avoided |
-| Short-lived access tokens | Limits the impact window if a token is stolen |
-| Refresh token rotation | Stolen refresh tokens are invalidated on next use |
-| Content Security Policy | CSP headers restrict the sources of executable scripts |
+| Register | Creates a user, hashes the password, issues access and refresh tokens, and generates a verify-email token |
+| Login | Verifies credentials and stores a refresh-token record in MongoDB |
+| Refresh | Accepts a refresh token, replaces the old record, and issues a new access token |
+| Logout | Deletes the stored refresh-token record |
+| Verify email | Accepts a verify-email token and updates the account verification state |
+| Forgot/reset password | Generates a forgot-password token, verifies it, and lets the user set a new password |
+| Change password | Protected flow for authenticated users |
+| Google OAuth | Supported through a backend callback flow that can log in or create an account |
 
-### Recommended future improvement
+## Token Roles
 
-Move the **refresh token to an HttpOnly Secure cookie** managed by the server. This removes the refresh token from JavaScript-accessible storage entirely, significantly reducing XSS impact.
-
----
-
-## Authorization
-
-### Route protection
-
-All state-mutating and user-specific endpoints require a valid access token. The auth middleware verifies the JWT on every protected request before the route handler executes.
-
-### Owner-only actions
-
-Certain actions are restricted to the resource owner and enforced server-side:
-
-| Action | Rule |
+| Token or secret-backed artifact | Purpose |
 |---|---|
-| Delete a post | `req.userId === post.authorId` |
-| Update profile | `req.userId === target user id` |
+| Access token | Sent on protected REST requests and used for socket handshake auth |
+| Refresh token | Rotated through the API and stored server-side for revocation/logout |
+| Verify-email token | Confirms account ownership during onboarding |
+| Forgot-password token | Gates the password reset flow |
 
-### Principle of least privilege
+## Password Handling
 
-- Users cannot read or modify other users' private data.
-- The API does not return `passwordHash` or internal fields in any response.
+- New passwords are hashed with bcrypt before storage.
+- The hash includes an application-side secret, so the stored value is not just the raw password hash.
+- The login path still recognizes a legacy SHA-256 format and transparently rehashes that password with bcrypt after a successful login.
 
----
+## Validation And Rate Limiting
 
-## Input validation
+- Joi schemas validate request bodies, params, query strings, and headers before controller logic runs.
+- Protected endpoints validate the `Bearer` header format and then verify the JWT.
+- Credential-sensitive auth routes share a strict rate limit of 10 attempts per 15 minutes per IP.
+- The backend also fails fast at startup when required auth-related environment variables are missing.
 
-All incoming request bodies and parameters are validated before processing:
+## Client-Side Token Handling
 
-- Required fields are checked for presence.
-- String length limits are enforced (e.g., post content ≤ 500 characters).
-- Email format is validated on registration.
-- Numeric IDs and cursor tokens are type-checked.
+- The SPA stores access and refresh tokens in `localStorage`.
+- A shared Axios client attaches the access token automatically and attempts a refresh when it receives an expired-token response.
+- This keeps the browser flow simple, but it is still a trade-off: `localStorage` is easier to wire into an SPA than cookies, but it is more exposed to XSS if the client is ever compromised.
 
-Validation errors return `400 VALIDATION_ERROR` before any database interaction.
+## Chat Access Control
 
----
+- Socket.IO requires `Authorization: Bearer <access_token>` during the handshake.
+- Unauthorized sockets are rejected or disconnected.
+- Conversation reads, writes, and room joins all verify that the caller is a participant in that conversation.
+- This means a valid token alone is not enough to read or send messages in an unrelated thread.
 
-## Password security
+## Origin And Integration Boundaries
 
-- Passwords are **hashed with bcrypt** before storage. The raw password is never persisted.
-- The hash is never included in any API response.
-
----
-
-## Rate limiting
-
-API rate limiting is applied to sensitive endpoints (login, register, refresh) to mitigate brute-force attacks. Rate limit errors return `429 RATE_LIMITED`.
-
----
-
-## HTTPS
-
-All traffic between the browser, Vercel Edge, and the API is served over **HTTPS**. Vercel enforces HTTPS by default.
+- Express CORS is scoped to the configured client origin when available, with a development-friendly fallback.
+- Public docs intentionally omit secret names, token contents, callback URLs, and provider credentials.
+- A reasonable next hardening step would be moving refresh-token handling to an `HttpOnly Secure` cookie while keeping access tokens short-lived.

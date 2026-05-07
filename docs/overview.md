@@ -4,93 +4,42 @@ title: Overview
 sidebar_position: 2
 ---
 
-# Project Overview
+import LoginScreen from '@site/static/img/screenshots/login-screen.png'
+import HomeFeedScreen from '@site/static/img/screenshots/home-feed.png'
 
-## Summary
+Threads Replica is a two-application system: a browser-based React client and a separate Express API. Together they cover the main social loops of account creation, posting, follows, search, saving content, and direct messaging.
 
-Threads Replica is a small but complete social network application inspired by Meta Threads. It was built as a portfolio project to demonstrate full-stack engineering proficiency across frontend, backend, database design, and deployment.
+## Product Summary
 
-**Core capabilities:**
+- The web app routes authenticated users into a home feed, post detail pages, profile pages, search, saved posts, and messages.
+- The API surface is broader than the current router and also includes notifications, hashtags, media uploads, and post-search endpoints.
+- The system is intentionally portfolio-sized: broad enough to show architecture and product thinking, but still honest about current constraints.
 
-- User registration and login with JWT authentication
-- Create, view, and delete posts
-- Reply to posts (threaded discussions)
-- Like and unlike posts
-- Follow and unfollow other users
-- A personalized "Following" feed showing posts from followed accounts
-- User profile pages
+## UI Snapshot
 
-## Screenshots
+These screenshots are public-safe references from the private project.
 
-> Screenshots of the live application are placed in `static/img/screenshots/`. Add `.png` files named after each view to populate this section.
+<div className="row">
+  <div className="col col--6">
+    <img src={LoginScreen} alt="Login screen" />
+    <p><em>Login flow</em></p>
+  </div>
+  <div className="col col--6">
+    <img src={HomeFeedScreen} alt="Home feed" />
+    <p><em>Home feed</em></p>
+  </div>
+</div>
 
-Recommended screenshot set:
+## Main User Journeys
 
-| File | View |
-|---|---|
-| `static/img/screenshots/login.png` | Login / registration screen |
-| `static/img/screenshots/feed.png` | Following feed |
-| `static/img/screenshots/create-post.png` | Create post modal |
-| `static/img/screenshots/post-detail.png` | Post detail with replies |
-| `static/img/screenshots/profile.png` | User profile page |
-| `static/img/screenshots/follow.png` | Follow / unfollow interaction |
+1. Auth and onboarding: users can register, log in, verify email, recover passwords, and complete a Google OAuth callback flow.
+2. Feed and posting: authenticated users land on a following feed first, with a `for_you` fallback when a new account does not follow anyone yet.
+3. Profiles and social graph: users can view profiles, follow or unfollow accounts, edit their own profile, and browse posts or replies.
+4. Search and saved content: the current UI emphasizes user discovery, while the backend also exposes post search and hashtag endpoints.
+5. Direct messages: users can start or reuse a 1-1 conversation, read paginated history, send messages, and receive realtime inbox updates.
 
-## Key user flows
+## Scope Notes
 
-### 1. Sign up and log in
-
-```
-User visits app
-  → fills registration form (username, email, password)
-  → server creates account, returns access + refresh tokens
-  → tokens stored in LocalStorage
-  → user is redirected to the feed
-```
-
-### 2. Create a post
-
-```
-Authenticated user
-  → clicks "New Post"
-  → writes content
-  → submits → POST /posts
-  → post appears at top of their profile and followers' feeds
-```
-
-### 3. Follow another user
-
-```
-User visits a profile
-  → clicks "Follow"
-  → POST /follows/:userId
-  → that user's posts now appear in the follower's feed
-```
-
-### 4. View the following feed
-
-```
-Authenticated user
-  → visits home/feed
-  → GET /feed/following (cursor-paginated)
-  → sorted by recency, limited to followed accounts
-```
-
-### 5. Like and reply
-
-```
-User views a post
-  → clicks heart icon → POST /posts/:id/like
-  → or clicks "Reply" → POST /posts/:id/replies
-  → counts update in real time (optimistic update on client)
-```
-
-## Project scope
-
-| In scope | Out of scope (current stage) |
-|---|---|
-| Core social interactions | Real-time notifications (planned) |
-| Following feed | Global/explore feed |
-| JWT auth (access + refresh) | OAuth / social login |
-| Post / reply / like | Video uploads |
-| User profiles | Full-text search |
-| Vercel deployment | Multi-region infrastructure |
+- The current frontend router exposes login, register, password recovery, email verification, feed, search, saved posts, profiles, post detail, and messages.
+- Notifications already exist as a backend domain, but there is no dedicated notification page in the current router.
+- Messaging is implemented as direct 1-1 chat only. There is no group chat surface in the current version.

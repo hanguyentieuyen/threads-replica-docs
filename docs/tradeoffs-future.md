@@ -4,109 +4,37 @@ title: Trade-offs & Future Work
 sidebar_position: 11
 ---
 
-# Trade-offs & Future Work
+The most interesting part of this project is not the feature list alone, but the decisions behind it. Threads Replica already shows a few deliberate trade-offs that are reasonable for a portfolio-scale product and also make good future-work candidates.
 
-## Design trade-offs
+## 1. Browser-Friendly Auth Versus Stricter Token Isolation
 
-### 1. JWT stored in LocalStorage
+- The current SPA stores access and refresh tokens in `localStorage` and uses an Axios refresh flow to recover from expired access tokens.
+- On the backend, refresh tokens are still persisted and rotated, which gives the system a server-side revocation point.
+- This is a practical middle ground for a browser-first project, but it is not the strongest possible isolation model.
+- Best next step: move refresh-token handling to an `HttpOnly Secure` cookie and keep the access token short-lived in memory.
 
-**Decision:** Store access and refresh tokens in LocalStorage.
+## 2. Aggregation-Heavy Reads Versus Simpler Write Paths
 
-| | Details |
-|---|---|
-| **Pros** | Simple implementation; works seamlessly in a SPA without backend cookie configuration |
-| **Cons** | Tokens are readable by JavaScript; vulnerable if an XSS attack is successful |
-| **Mitigations** | Input sanitization, React's default HTML escaping, short-lived access tokens, refresh token rotation |
-| **Planned improvement** | Move refresh token to an `HttpOnly Secure` cookie; the access token can remain in memory (not LocalStorage) for further hardening |
+- Feed reads, profile tabs, bookmarks, replies, and search all rely on MongoDB aggregation pipelines to join user data, counts, and related entities on demand.
+- That keeps writes comparatively simple and avoids building a separate read model too early.
+- The trade-off is pagination consistency and query cost: the current system uses `page` and `limit`, which is easier to implement than cursor pagination but less stable on fast-moving feeds.
+- Best next step: introduce cursor pagination for high-churn timelines and message history if the product surface keeps growing.
 
----
+## 3. Hybrid Chat Design Optimized For 1-1 Messaging
 
-### 2. Fan-out on read (following feed)
+- Conversations and messages are persisted through REST, while Socket.IO is used for `chat:new_message` and `chat:conversation_read` events.
+- Conversation documents intentionally denormalize unread counts and last-message preview data so the inbox can be rendered quickly.
+- This is a strong fit for direct messages, but the current implementation is still single-node, has no Redis adapter, and does not create chat-specific indexes during startup.
+- Best next step: add conversation and message indexes, then layer in chat integration tests before considering horizontal socket scaling.
 
-**Decision:** Generate the following feed by querying posts whose `authorId` is in the user's following list at read time.
+## 4. Backend Capability Ahead Of UI Surface
 
-| | Details |
-|---|---|
-| **Pros** | Simple to implement; no write amplification; always fresh data |
-| **Cons** | Query cost grows linearly with the size of the following list; can be slow for users who follow many accounts |
-| **Current mitigation** | Compound indexes on `(authorId, createdAt)` and `(followerId)` |
-| **Planned improvement** | Cursor-based pagination to limit query scope; precomputed timelines (fan-out on write) for heavy users |
+- The backend already supports notifications, post search, hashtags, media uploads, and OAuth-related flows.
+- The frontend exposes the strongest user-facing experiences around feed, profile, saved posts, and direct messages, but not every backend capability has a dedicated screen yet.
+- Best next step: add a notification center UI, a richer post-search experience, and clearer visibility into notification read state.
 
----
+## 5. Quality Is Stronger On The Frontend Than The Backend
 
-### 3. Denormalized like/reply counts
-
-**Decision:** Store `likeCount` and `replyCount` as fields directly on the `Post` document.
-
-| | Details |
-|---|---|
-| **Pros** | Fast reads; no need to count related documents on every post fetch |
-| **Cons** | Write contention on popular posts; risk of count drift if updates are not atomic |
-| **Mitigation** | Use atomic increment/decrement operations (`$inc`) to keep counts consistent |
-| **Alternative** | Compute counts on read from the `Like` and `Reply` collections (simpler, but slower at scale) |
-
----
-
-### 4. Monorepo vs separate repos
-
-**Decision:** (Assumed) frontend and backend live in the same private repository for simplicity.
-
-| | Details |
-|---|---|
-| **Pros** | Easier to coordinate changes across frontend and backend; single CI pipeline |
-| **Cons** | Tighter coupling; shared deployment pipeline |
-| **Planned improvement** | Separate repos (or at minimum separate CI jobs) if the project grows to a team setting |
-
----
-
-### 5. No automated test suite (MVP stage)
-
-**Decision:** Manual testing only at MVP stage.
-
-| | Details |
-|---|---|
-| **Pros** | Faster initial development cycle |
-| **Cons** | Higher risk of regressions as the codebase grows |
-| **Planned improvement** | Add unit tests (Jest), integration tests (Supertest), and optionally E2E tests (Playwright) — see [Testing & Quality](./testing-quality) |
-
----
-
-## Future work roadmap
-
-### Near-term
-
-| Feature | Description |
-|---|---|
-| HttpOnly cookie for refresh token | Harden auth token storage |
-| Automated tests | Unit + integration test suite |
-| Pagination improvements | Ensure cursor pagination is applied consistently |
-| Error monitoring | Integrate Sentry or similar |
-
-### Medium-term
-
-| Feature | Description |
-|---|---|
-| Real-time notifications | Socket.IO / WebSocket connection for live notification delivery |
-| In-app notification center | UI panel for likes, replies, new followers |
-| Push notifications | Web Push API or mobile push |
-| Full-text search | Search posts and users (MongoDB Atlas Search or Elasticsearch) |
-
-### Longer-term
-
-| Feature | Description |
-|---|---|
-| Precomputed timeline | Fan-out on write for the following feed (better scalability) |
-| Content moderation | Report / block users; automated spam detection |
-| Media uploads | Image/video posts with CDN delivery |
-| Global/explore feed | Trending posts beyond the following graph |
-| Multi-region deployment | Lower latency for users outside the primary region |
-| Analytics | Usage metrics and event tracking (privacy-respecting) |
-
----
-
-## Lessons learned
-
-- **Start simple, index intentionally.** Adding indexes later is easy; removing premature complexity is hard.
-- **Short access token TTL matters.** A 15-minute TTL dramatically limits blast radius if a token leaks — the cost (refresh overhead) is minimal.
-- **Optimistic UI is important for social apps.** Immediate feedback on likes/follows is a significant UX improvement over waiting for server confirmation.
-- **Cursor pagination beats offset pagination early.** Offset pagination produces inconsistent results when new content is inserted concurrently; cursor pagination avoids this entirely.
+- The frontend has real automated coverage with Vitest, Testing Library, MSW, and Playwright.
+- The backend demonstrates solid validation and runtime safeguards, but no automated test suite was found in the inspected repo.
+- Best next step: add API-level tests for auth, feeds, and conversations so future changes have stronger regression protection.

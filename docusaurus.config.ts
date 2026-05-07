@@ -4,8 +4,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Threads Replica Docs',
-  tagline: 'Sanitized documentation for a private full-stack social-network project',
-  favicon: 'img/favicon.ico',
+  tagline: 'Public technical documentation for a private full-stack social platform',
+  favicon: 'img/threads-app-icon.png',
 
   url: 'https://hanguyentieuyen.github.io',
   baseUrl: '/threads-replica-docs/',
@@ -45,6 +45,10 @@ const config: Config = {
   themeConfig: {
     navbar: {
       title: 'Threads Replica',
+      logo: {
+        alt: 'Threads Replica logo',
+        src: 'img/threads-app-icon.png',
+      },
       items: [
         {
           type: 'docSidebar',
@@ -63,24 +67,32 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Start Here',
           items: [
             {label: 'Introduction', to: '/'},
+            {label: 'Overview', to: '/overview'},
             {label: 'Architecture', to: '/architecture'},
-            {label: 'API Contract', to: '/api-contract'},
           ],
         },
         {
-          title: 'More',
+          title: 'Review Areas',
+          items: [
+            {label: 'API Contract', to: '/api-contract'},
+            {label: 'Auth & Security', to: '/auth-security'},
+            {label: 'Trade-offs & Future Work', to: '/tradeoffs-future'},
+          ],
+        },
+        {
+          title: 'Project',
           items: [
             {
-              label: 'GitHub',
+              label: 'Docs Repository',
               href: 'https://github.com/hanguyentieuyen/threads-replica-docs',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} hanguyentieuyen. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} hanguyentieuyen. Public docs built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

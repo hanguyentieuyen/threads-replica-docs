@@ -4,119 +4,83 @@ title: Architecture
 sidebar_position: 4
 ---
 
-# Architecture
+Threads Replica is built as a split frontend and backend system. The browser app handles routing, UI state, and cache synchronization, while the API owns persistence, validation, auth, and realtime messaging events.
 
-## High-level overview
-
-The system follows a classic three-tier web architecture: a React single-page application in the browser, a Node.js/Express REST API on the server, and MongoDB as the primary data store. Both tiers are deployed on Vercel.
+## High-Level Shape
 
 ```mermaid
 flowchart LR
-    U([User / Browser])
+    Browser[Browser]
+    SPA[React SPA]
+    Query[TanStack Query + Axios]
+    API[Express API]
+    Socket[Socket.IO Server]
+    Service[Controllers + Services]
+    DB[(MongoDB)]
+    Storage[Optional S3 or R2]
+    Email[Optional Email Provider]
 
-    subgraph Client["Client Tier (Vercel SPA)"]
-        FE["React Web App\n(SPA)"]
-    end
-
-    subgraph Server["Server Tier (Vercel Functions)"]
-        API["Express REST API\n(Node.js)"]
-        AUTH["Auth Middleware\n(JWT verify)"]
-    end
-
-    subgraph Data["Data Tier"]
-        DB[("MongoDB\n(Atlas)")]
-    end
-
-    U -- "HTTPS (REST)" --> FE
-    FE -- "HTTPS (REST + Bearer token)" --> API
-    API -- "verify" --> AUTH
-    AUTH -- "pass / reject" --> API
-    API -- "read / write" --> DB
+    Browser --> SPA
+    SPA --> Query
+    Query -->|REST| API
+    SPA -->|Socket.IO| Socket
+    API --> Service
+    Socket --> Service
+    Service --> DB
+    Service --> Storage
+    Service --> Email
 ```
 
----
+## Client Responsibilities
 
-## Request lifecycle (authenticated call)
+- `threads-web` defines public and protected routes in `router.tsx`.
+- API calls are centralized in `src/apis/*` and shared through an Axios instance that attaches Bearer tokens and retries after refresh when an access token expires.
+- TanStack Query handles paginated reads for feeds, profiles, saved posts, search, and message history.
+- The chat client keeps a separate Socket.IO connection for direct-message events and unread-count synchronization.
 
-The following sequence diagram illustrates how a typical authenticated request (e.g., create a post) flows through the system.
+## API Responsibilities
+
+- `threads-api/src/index.ts` boots Express, JSON parsing, CORS, Swagger UI, route groups, database connection, and Socket.IO on the same HTTP server.
+- Route files stay thin and delegate work to validators, controllers, and service classes.
+- Joi validation runs before controller logic for headers, params, query strings, and bodies.
+- MongoDB remains the system of record for posts, follows, bookmarks, notifications, conversations, and messages.
+
+## REST Request Path
+
+1. A route-level page or reusable component calls a module in `src/apis`.
+2. The shared Axios client adds `Authorization: Bearer <access_token>` when the user is authenticated.
+3. Express route middleware validates the request and verifies the access token.
+4. The controller calls a service method.
+5. The service reads or writes MongoDB and returns a JSON response with `message` and `data`.
+
+## Realtime Message Path
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User
-    participant SPA as React SPA
-    participant API as Express API
-    participant MW as Auth Middleware
+    participant Client as React Messages UI
+    participant API as Express Controller
+    participant Service as Conversations Service
     participant DB as MongoDB
+    participant Socket as Socket.IO
 
-    User->>SPA: Submits "New Post" form
-    SPA->>API: POST /posts\nAuthorization: Bearer <access_token>
-    API->>MW: Invoke auth middleware
-    MW->>MW: Verify JWT signature & expiry
-    alt Token valid
-        MW-->>API: next() — attach userId to req
-        API->>DB: Insert post document
-        DB-->>API: Inserted document
-        API-->>SPA: 201 Created { data: post }
-        SPA-->>User: Post appears in feed
-    else Token expired
-        MW-->>SPA: 401 Unauthorized
-        SPA->>API: POST /auth/refresh\n{ refreshToken }
-        API->>DB: Validate refresh token
-        DB-->>API: Token record found
-        API-->>SPA: 200 { accessToken, refreshToken }
-        SPA->>API: Retry POST /posts (new access token)
-        API-->>SPA: 201 Created { data: post }
-    end
+    Client->>API: POST /conversations/:id/messages
+    API->>Service: createMessage(...)
+    Service->>DB: insert message
+    Service->>DB: update conversation summary and unread state
+    Service-->>API: created message + per-user conversation payloads
+    API->>Socket: emit chat:new_message to user rooms
+    API-->>Client: HTTP response
 ```
 
----
+## REST Versus Socket.IO
 
-## Component responsibilities
+- REST is the source of truth for persisted data, pagination, and initial fetches.
+- Socket.IO is used to push `chat:new_message` and `chat:conversation_read` events after the database update succeeds.
+- Socket rooms are scoped to users and conversations, but user rooms drive the main message and inbox updates so unread badges still change even if a detail screen is not open.
 
-### React Web App (SPA)
+## Notable Implementation Details
 
-- Renders all UI: feed, profiles, post detail, auth screens.
-- Manages client-side routing (no full-page reloads).
-- Maintains auth state (tokens in LocalStorage; see [Auth & Security](./auth-security)).
-- Applies optimistic updates for likes and follows to keep the UI responsive.
-- Handles token refresh transparently in the API client layer.
-
-### Express REST API
-
-- Implements business logic for all social features.
-- Applies auth middleware to protected routes (JWT verification).
-- Validates request payloads (body, params, query).
-- Returns consistent JSON responses and standardized error codes.
-- Delegates data access to the MongoDB layer.
-
-### Auth Middleware (JWT verify)
-
-- Reads the `Authorization: Bearer <token>` header on every protected request.
-- Verifies the JWT signature using the configured secret.
-- Checks token expiry (`exp` claim).
-- Attaches the decoded `userId` to the request context for downstream handlers.
-
-### MongoDB (Atlas)
-
-- Primary storage for users, posts, replies, follow relationships, and likes.
-- Indexes support the most common read patterns:
-  - Posts by author and creation time (feed generation).
-  - Follow pairs (follower, following) for feed queries and follow-status checks.
-  - User lookup by email and username (login, profile).
-
----
-
-## Deployment topology
-
-```
-Browser
-  │
-  ├── React SPA ──────────── Vercel Edge Network (CDN)
-  │
-  └── Express API ─────────── Vercel Serverless Functions
-                                    │
-                              MongoDB Atlas (cloud-hosted)
-```
-
-Both the SPA and the API are deployed to Vercel. The API runs as Vercel Serverless Functions, which auto-scales with traffic and requires no infrastructure management.
+- Feed, profile, bookmark, and search reads rely heavily on MongoDB aggregation pipelines rather than a separate read model.
+- The home feed starts with `following` and falls back to `for_you` on the client when the first page is empty.
+- App startup creates a text index for post content search, but chat-specific indexes are not created automatically yet.

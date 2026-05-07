@@ -4,120 +4,41 @@ title: Testing & Quality
 sidebar_position: 10
 ---
 
-# Testing & Quality
+The quality story is strongest on the frontend today. The private repo contains real automated UI coverage, while the backend currently relies more on validation layers, startup guards, and manual verification than on a visible automated test suite.
 
-## Current state
+## Verified Coverage
 
-The project is at portfolio/MVP stage. The primary quality gates are:
-
-| Practice | Status |
+| Layer | What is present |
 |---|---|
-| Manual smoke testing (core flows) | ✅ Applied |
-| ESLint (code style) | ✅ Configured |
-| Prettier (formatting) | ✅ Configured |
-| TypeScript strict mode | ✅ Enabled |
-| Unit tests (business logic) | 🔄 Partial / planned |
-| Integration tests (API endpoints) | 🔄 Planned |
-| Frontend component tests | 🔄 Planned |
-| End-to-end tests | 🔄 Planned |
+| Frontend unit and component tests | Vitest + Testing Library tests for router behavior, auth pages, feed screens, profile flows, saved posts, messages, and reusable components such as `PostCard` |
+| Frontend network mocking | MSW handlers for auth, posts, users, comments, and chat APIs |
+| Frontend socket testing | Test setup mocks `socket.io-client` and simulates chat events without a live socket server |
+| Browser E2E | Playwright specs for register, login, forgot password, home feed, post detail, post interactions, profile, and search |
+| Static API discoverability | Swagger UI in the backend repo |
+| Request validation | Joi validation on backend bodies, params, headers, and query strings |
 
----
+## How Frontend Tests Are Structured
 
-## Manual smoke test checklist
+- Shared test setup registers `@testing-library/jest-dom`, MSW, mocked browser storage, and mocked socket behavior.
+- Page-level tests cover the main product routes rather than only isolated utility functions.
+- Playwright is configured with `http://localhost:3000` as the base URL.
+- The Playwright `webServer` block is currently commented out, so the frontend dev server is started manually before E2E runs.
 
-After each deployment, the following flows are verified manually:
+## Code-Quality Practices Visible In The Repo
 
-- [ ] Register a new account
-- [ ] Log in with existing credentials
-- [ ] Create a post
-- [ ] Reply to a post
-- [ ] Like and unlike a post
-- [ ] Follow and unfollow a user
-- [ ] View the following feed (confirm only followed users' posts appear)
-- [ ] Refresh token flow (wait for access token expiry or force-expire, confirm seamless retry)
-- [ ] Log out (confirm tokens are invalidated)
+- Both `threads-web` and `threads-api` include ESLint and Prettier scripts.
+- The frontend build script type-checks before bundling.
+- The backend validates required runtime environment variables before boot.
+- MongoDB text-index creation for post search is handled in application startup rather than as a separate manual note.
 
----
+## Honest Gaps
 
-## Code quality practices
+- No backend automated test suite was discovered in the inspected private repo.
+- There is no visible API-level integration test layer for auth, feed, or conversations yet.
+- Realtime chat behavior is thoughtfully implemented, but it would benefit from dedicated backend integration tests around unread counts, membership checks, and socket reconnection scenarios.
 
-### TypeScript
+## Practical Next Steps
 
-The project uses **TypeScript** across both frontend and backend. Strict mode (`"strict": true`) is enabled to catch potential null/undefined bugs at compile time.
-
-### ESLint
-
-ESLint is configured with recommended rules for:
-- React (hooks rules, JSX best practices)
-- Node.js (no `eval`, no insecure patterns)
-- TypeScript-specific rules
-
-### Prettier
-
-Prettier enforces a consistent code style. Format-on-save is recommended in the developer setup.
-
-### Commit discipline
-
-- Short, descriptive commit messages.
-- Feature branches merged via pull requests.
-- PR descriptions include a brief summary of the change and any manual test steps.
-
----
-
-## Recommended next steps for test coverage
-
-### Unit tests — API layer
-
-Test individual service functions (e.g., `createPost`, `generateFeed`) in isolation with mocked database calls.
-
-**Recommended tool:** Jest + ts-jest
-
-```typescript
-// Example: test that createPost rejects empty content
-it('should throw VALIDATION_ERROR for empty content', async () => {
-  await expect(createPost({ content: '', authorId: 'u1' }))
-    .rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
-});
-```
-
-### Integration tests — REST endpoints
-
-Test full request/response cycles against an in-memory or test MongoDB instance.
-
-**Recommended tool:** Supertest + Jest + MongoDB Memory Server
-
-```typescript
-// Example: POST /posts returns 401 without token
-it('POST /posts should return 401 when unauthenticated', async () => {
-  const res = await request(app).post('/posts').send({ content: 'Hello' });
-  expect(res.status).toBe(401);
-});
-```
-
-### Frontend component tests
-
-Test critical UI components in isolation (e.g., PostCard, FeedList, LoginForm).
-
-**Recommended tool:** React Testing Library + Jest
-
-### End-to-end tests
-
-Test complete user journeys in a browser.
-
-**Recommended tool:** Playwright or Cypress
-
----
-
-## CI pipeline (future)
-
-A minimal CI pipeline would run on every PR:
-
-```
-1. Install dependencies (npm ci)
-2. Type-check (tsc --noEmit)
-3. Lint (eslint .)
-4. Unit + integration tests (jest)
-5. Build (npm run build)
-```
-
-This ensures no broken types, lint violations, or failing tests reach the main branch.
+- Add API integration tests for auth, feed, notifications, and conversations.
+- Add targeted chat tests for send-message, mark-as-read, and unauthorized conversation access.
+- Automate frontend E2E startup so Playwright can run with less manual setup.

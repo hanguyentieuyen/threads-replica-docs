@@ -4,85 +4,56 @@ title: Tech Stack
 sidebar_position: 3
 ---
 
-# Tech Stack
+Threads Replica uses a modern TypeScript stack across both the browser client and the API. The choices are pragmatic rather than experimental: the code favors libraries that make product iteration, API organization, and testing straightforward.
 
-## Frontend — React.js
+## Frontend Stack
 
-The client is a single-page application built with **React.js**.
-
-| Concern | Approach |
-|---|---|
-| UI rendering | Functional components with React hooks |
-| Routing | Client-side routing (React Router) |
-| API communication | Dedicated API client layer (fetch/axios wrapper) |
-| State management | Component-local state + React Context for auth/user |
-| Optimistic updates | Applied to likes and follow actions for snappy UX |
-| Error handling | Centralized error boundary and per-request error states |
-
-### Why React?
-React's component model allows clean separation of UI concerns. Its large ecosystem, strong TypeScript support, and Vercel's first-class deployment make it a natural fit for this project.
-
----
-
-## Backend — Node.js + Express
-
-The server is a RESTful API built with **Node.js** and **Express**.
-
-| Concern | Approach |
-|---|---|
-| API style | REST — resource-oriented routes |
-| Middleware | Auth verification, input validation, error handler |
-| Authentication | JWT (access + refresh tokens) |
-| Response format | Consistent JSON envelope (`{ data, error, status }`) |
-| Error handling | Centralized Express error middleware |
-
-### Why Express?
-Express is lightweight and unopinionated, which kept the server simple and easy to reason about. Middleware composition made it straightforward to add auth, validation, and logging cross-cutting concerns.
-
----
-
-## Database — MongoDB
-
-**MongoDB** stores all application data using a document-oriented model.
-
-| Concern | Approach |
-|---|---|
-| Users | Single collection, indexed by email/username |
-| Posts & replies | Separate collections or nested docs |
-| Follows | Junction-style documents (followerId, followingId) |
-| Likes | Junction-style documents (userId, postId) |
-| Indexing | Compound indexes on author + createdAt, follower pairs |
-
-### Why MongoDB?
-The flexible document model suits social content (variable post structure, embedded counts). It also allowed rapid iteration on the data schema during development.
-
----
-
-## Deployment — Vercel
-
-Both the frontend (React SPA) and the Node.js API are deployed on **Vercel**.
-
-| Concern | Approach |
-|---|---|
-| Frontend hosting | Vercel static/SPA hosting |
-| API hosting | Vercel Serverless Functions |
-| Environment separation | Dev vs. Production via Vercel project settings |
-| Secrets management | Environment variables configured in Vercel dashboard (not in code) |
-
-### Why Vercel?
-Vercel provides zero-config deployment for React and Node.js projects, integrated preview deployments for every PR, and a generous free tier suitable for portfolio projects.
-
----
-
-## Summary table
-
-| Layer | Technology | Version range |
+| Area | Verified choice | Role in the project |
 |---|---|---|
-| Frontend | React.js | 18.x |
-| Routing | React Router | 6.x |
-| Backend | Node.js | 20.x |
-| Framework | Express | 4.x |
-| Database | MongoDB | 7.x |
-| ODM | Mongoose (or native driver) | 8.x |
-| Auth | JSON Web Tokens (JWT) | — |
-| Deployment | Vercel | — |
+| App framework | React 18 | Builds the single-page application and route-level screens |
+| Language and bundler | TypeScript + Vite | Fast local iteration and typed UI code |
+| Routing | React Router | Public and protected route separation |
+| Server state | TanStack Query | Fetching, pagination, caching, retries, and invalidation |
+| HTTP client | Axios | Shared request layer with auth headers and token refresh handling |
+| Forms | React Hook Form | Form state and validation ergonomics on auth/profile flows |
+| UI system | Tailwind CSS + Radix UI | Utility-first styling and accessible primitives |
+| Realtime client | Socket.IO client | Direct-message synchronization |
+| Localization | i18next + react-i18next | English and Vietnamese UI text |
+
+## Backend Stack
+
+| Area | Verified choice | Role in the project |
+|---|---|---|
+| Runtime | Node.js | Runs the API server and background helpers |
+| Web framework | Express | Route registration, middleware composition, and JSON APIs |
+| Language | TypeScript | Shared domain types and service-layer safety |
+| Database | MongoDB native driver | Stores users, posts, follows, bookmarks, notifications, and chat data |
+| Validation | Joi | Validates request bodies, params, headers, and query strings |
+| Authentication | JWT | Access token, refresh token, verify-email, and forgot-password flows |
+| Realtime server | Socket.IO | Handshake auth, user rooms, and conversation events |
+| API documentation | Swagger UI | Interactive API reference for the private implementation repo |
+
+## Quality and Developer Tooling
+
+| Area | Verified choice | Role in the project |
+|---|---|---|
+| Component and page tests | Vitest + Testing Library | Frontend behavior tests |
+| Network mocking | MSW | Stable client-side tests without a live backend |
+| Browser E2E | Playwright | End-to-end flows for auth, feed, profile, and search |
+| Linting and formatting | ESLint + Prettier | Baseline code consistency across web and API projects |
+
+## Optional Integrations
+
+These integrations are supported in the codebase but are not required to understand the core architecture.
+
+| Integration | Purpose |
+|---|---|
+| Google OAuth | Optional social sign-in entry point |
+| AWS S3 or Cloudflare R2 | Optional object storage for uploaded media |
+| Resend or SES-compatible sender config | Optional email delivery for verify-email and password-reset flows |
+
+## Why This Stack Fits The Project
+
+- React, TanStack Query, and Axios make it easy to express feed-style data fetching and protected routes.
+- Express, Joi, and a service-oriented backend structure keep route logic understandable in a portfolio project.
+- MongoDB fits social data well because posts, mentions, hashtags, notifications, and conversation metadata all benefit from flexible document shapes and aggregation pipelines.

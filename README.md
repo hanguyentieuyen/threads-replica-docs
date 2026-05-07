@@ -1,46 +1,51 @@
-# Threads Replica — Public Documentation (Sanitized)
+# Threads Replica Docs
 
-This repository contains **sanitized, portfolio-grade documentation** for a private Threads-inspired social network project. The source code is intentionally kept private; this repo exists to showcase system design, architecture, and engineering decisions.
+Public documentation for a private full-stack social platform inspired by Threads.
+
+The implementation repository stays private, but this site is public so recruiters and engineers can review the architecture, API design, data model, auth flows, testing approach, and engineering trade-offs without exposing proprietary code, secrets, or operational credentials.
 
 ## Live Docs
 
-**[https://hanguyentieuyen.github.io/threads-replica-docs/](https://hanguyentieuyen.github.io/threads-replica-docs/)**
+- https://hanguyentieuyen.github.io/threads-replica-docs/
 
-## Tech stack (private project)
+## What I Built
 
-- **Frontend:** React.js (SPA)
-- **Backend:** Node.js + Express (REST API)
-- **Database:** MongoDB
-- **Auth:** JWT access + refresh tokens
-- **Deployment:** Vercel
+- A React 18 + TypeScript single-page app with route guards, TanStack Query, Axios token refresh, and bilingual UI support.
+- A Node.js + Express + TypeScript API organized around routes, Joi validation, controllers, services, and MongoDB collections.
+- Social product flows including posts, comments, follows, reposts, bookmarks, search, notifications, and direct messages.
+- A hybrid realtime messaging design where REST remains the source of truth and Socket.IO keeps inbox state in sync.
+- Frontend automated coverage with Vitest, Testing Library, MSW, and Playwright.
 
-## What's documented here
+## Screenshot Preview
 
-| Section | Content |
+| Login | Home feed |
 |---|---|
-| Overview | Project summary, user flows, screenshot references |
-| Tech Stack | Technology choices and rationale |
-| Architecture | High-level diagrams and component breakdown |
-| Features | Detailed feature descriptions |
-| Data Model | Conceptual ER diagram |
-| API Contract | Sanitized REST endpoint reference |
-| Auth & Security | JWT flow, token storage trade-offs, mitigations |
-| Deployment | Vercel deployment overview |
-| Testing & Quality | Test strategy and code quality practices |
-| Trade-offs & Future Work | Design decisions and roadmap |
+| ![Login screen](./static/img/screenshots/login-screen.png) | ![Home feed](./static/img/screenshots/home-feed.png) |
 
+## What The Public Docs Cover
 
-## Run docs locally
+- System overview and feature scope
+- Tech stack and architecture
+- Data model and API organization
+- Auth and security decisions
+- Deployment shape and environment categories
+- Testing strategy, current gaps, and future work
+
+## Why The Source Repo Is Private
+
+The private repository contains application code, configuration, and operational details that are not published publicly. This documentation repo focuses on the parts most useful in a portfolio review: system shape, interfaces, technical decisions, and current implementation boundaries.
+
+## Run Docs Locally
 
 ```bash
 npm install
 npm start
 ```
 
-## Build for production
+## Build Docs
 
 ```bash
 npm run build
 ```
 
-Built with [Docusaurus](https://docusaurus.io/).
+Built with Docusaurus and deployed as a public documentation site for portfolio review.

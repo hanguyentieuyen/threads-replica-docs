@@ -4,102 +4,51 @@ title: Deployment
 sidebar_position: 9
 ---
 
-# Deployment
+Threads Replica runs as two separate deployable applications inside the same private source repository: a browser client and a backend API. This page explains the runtime shape without exposing internal endpoints or sensitive configuration.
 
-## Platform: Vercel
+## Runtime Split
 
-Both the React frontend (SPA) and the Node.js/Express backend are deployed on **Vercel**.
+| Application | Role | Verified local default |
+|---|---|---|
+| `threads-web` | React SPA built with Vite | `http://localhost:3000` |
+| `threads-api` | Express API, Swagger UI, and Socket.IO server | `http://localhost:4000` |
+| `threads-replica-docs` | Public Docusaurus documentation site | Separate public docs deployment |
 
-Vercel provides:
+## Local Development Shape
 
-- **Zero-config deployments** for React and Node.js projects.
-- **Preview deployments** for every pull request (useful for reviewing UI changes before merging).
-- **Serverless Functions** for the Express API (auto-scaling, no server management).
-- **Edge CDN** for static assets and the React SPA.
-- **Environment variable management** via the Vercel dashboard (secrets are never committed to source control).
+1. Install dependencies separately for `threads-web` and `threads-api`.
+2. Start the API in watch mode.
+3. Start the Vite client.
+4. Run browser tests against the local frontend, with the API available on the configured base URL.
 
----
+The frontend and backend are coupled by environment configuration rather than by a single monolithic runtime.
 
-## Environments
+## Environment Categories
 
-| Environment | Purpose |
+| Category | What it covers |
 |---|---|
-| **Development** | Local machine — frontend dev server + local API + local MongoDB |
-| **Preview** | Vercel preview URL per PR — useful for testing before merge |
-| **Production** | Live Vercel deployment on merge to main branch |
+| Core runtime | Port, environment mode, and general server boot requirements |
+| Database | MongoDB credentials, database name, and collection names |
+| Auth | JWT signing secrets, token expiry windows, and the password secret used in hashing |
+| Client origin and callbacks | Allowed frontend origin, redirect callback, and OAuth-related client or redirect settings |
+| Optional storage | S3 or R2 credentials, bucket selection, and endpoint configuration |
+| Optional email | Resend or SES-style sender configuration for verify-email and forgot-password flows |
 
----
+## Verified Backend Startup Behavior
 
-## Typical deployment flow
+- Required environment variables are validated before the server boots.
+- The upload workspace is created during startup.
+- Swagger UI is mounted as part of the Express app.
+- Database initialization includes creation of a text index for post content search.
+- Socket.IO is initialized on the same HTTP server as the REST API.
 
-```
-1. Developer pushes changes to a feature branch
-2. Vercel automatically creates a Preview deployment
-3. Manual testing / code review on the Preview URL
-4. PR is merged to main
-5. Vercel triggers a Production deployment automatically
-6. Smoke test: login, feed, create post, like, follow
-```
+## Public-Safe Hosting Summary
 
----
+- The project is designed as a split deployment, not a single all-in-one process.
+- Repo materials point to separate frontend and backend hosting rather than a monolith.
+- This public documentation intentionally avoids publishing live application URLs, callback URLs, or provider account details.
 
-## Environment variables
+## Operational Notes
 
-Sensitive configuration (database connection strings, JWT secrets, etc.) is stored as **environment variables in the Vercel dashboard** — never in source code or committed files.
-
-> No secrets, connection strings, or credentials are documented here.
-
-Typical variables managed this way:
-
-| Variable | Purpose |
-|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `JWT_ACCESS_SECRET` | Secret for signing access tokens |
-| `JWT_REFRESH_SECRET` | Secret for signing refresh tokens |
-| `NODE_ENV` | `development` / `production` |
-
----
-
-## Build process
-
-### Frontend
-
-```
-npm run build
-→ Generates static assets in /dist or /build
-→ Served by Vercel Edge CDN
-```
-
-### Backend (API)
-
-```
-Vercel detects Express API entry point
-→ Wraps routes as Serverless Functions
-→ Auto-deploys on push
-```
-
----
-
-## Database: MongoDB Atlas
-
-The database is hosted on **MongoDB Atlas** (cloud-managed). Vercel Serverless Functions connect to Atlas over a secure TLS connection using the `MONGODB_URI` environment variable.
-
----
-
-## Monitoring & observability (current state)
-
-| Concern | Current approach |
-|---|---|
-| Error logging | Console logging (Vercel captures function logs) |
-| Request logging | Middleware logs method, path, and status code (sanitized) |
-| Alerts | Not configured (future work) |
-| Uptime monitoring | Not configured (future work) |
-
----
-
-## Future improvements
-
-- Add structured logging (e.g., Winston) with log levels.
-- Integrate an error tracking service (e.g., Sentry).
-- Set up uptime monitoring and alerting.
-- Add a staging environment with production-like data.
+- Media and email integrations are optional from a documentation point of view: they extend the platform, but they are not required to understand the core social architecture.
+- The current codebase shows stronger configuration structure than observability structure. Logging, uptime checks, and production monitoring are still natural areas for improvement.
