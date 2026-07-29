@@ -29,9 +29,9 @@ The most interesting part of this project is not the feature list alone, but the
 
 ## 4. Backend Capability Ahead Of UI Surface
 
-- The backend already supports notifications, post search, hashtags, media uploads, and OAuth-related flows.
-- The frontend exposes the strongest user-facing experiences around feed, profile, saved posts, and direct messages, but not every backend capability has a dedicated screen yet.
-- Best next step: add a notification center UI, a richer post-search experience, and clearer visibility into notification read state.
+- The frontend now includes a notification inbox, but several backend/client capabilities still lack a complete user-facing flow: post search, a `for_you` feed selector, comment replies, and circle/audience management.
+- Media uploads also reach the composer, but posted images and video are not yet rendered on feed and detail cards.
+- Best next step: add a richer post-search experience, finish media rendering, and decide the product scope for replies and audience management.
 
 ## 5. Quality Is Stronger On The Frontend Than The Backend
 

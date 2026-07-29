@@ -38,7 +38,7 @@ This page describes the public-safe shape of the API rather than reproducing the
 | `/comments` | `POST /`, `PUT /:comment_id`, `DELETE /:comment_id`, `POST or DELETE /:comment_id/like` | Separate mutation group for comment writes |
 | `/medias` | `POST /upload-image`, `POST /upload-video` | Authenticated upload endpoints |
 | `/hashtags` | `GET /`, `POST /` | Search or create hashtags |
-| `/notifications` | `GET /` | Paginated notification retrieval |
+| `/notifications` | `GET /` plus read-state mutations | Paginated notification retrieval, filtering, and mark-one/mark-all-read actions |
 | `/conversations` | `GET /`, `POST /`, `GET /:conversation_id/messages`, `POST /:conversation_id/messages`, `POST /:conversation_id/read` | Inbox, message history, send, and read-state APIs |
 | `/static` | Static file access route group | Supports serving uploaded/static assets |
 
@@ -50,6 +50,7 @@ This page describes the public-safe shape of the API rather than reproducing the
 | `feed_type=following|for_you` | Home feed endpoint |
 | `post_type` filter | Child-post retrieval under a post |
 | Text search query params | Post search and user search |
+| Notification scope, type, and read-state filters | Notification inbox |
 
 ## REST And Realtime For Messaging
 

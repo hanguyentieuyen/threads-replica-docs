@@ -10,7 +10,7 @@ The quality story is strongest on the frontend today. The private repo contains 
 
 | Layer | What is present |
 |---|---|
-| Frontend unit and component tests | Vitest + Testing Library tests for router behavior, auth pages, feed screens, profile flows, saved posts, messages, and reusable components such as `PostCard` |
+| Frontend unit and component tests | Vitest + Testing Library tests for router behavior, auth pages, feed screens, profile flows, saved posts, messages, post detail, and reusable components such as `PostCard` |
 | Frontend network mocking | MSW handlers for auth, posts, users, comments, and chat APIs |
 | Frontend socket testing | Test setup mocks `socket.io-client` and simulates chat events without a live socket server |
 | Browser E2E | Playwright specs for register, login, forgot password, home feed, post detail, post interactions, profile, and search |
@@ -36,6 +36,8 @@ The quality story is strongest on the frontend today. The private repo contains 
 - No backend automated test suite was discovered in the inspected private repo.
 - There is no visible API-level integration test layer for auth, feed, or conversations yet.
 - Realtime chat behavior is thoughtfully implemented, but it would benefit from dedicated backend integration tests around unread counts, membership checks, and socket reconnection scenarios.
+- The full Vitest run did not complete within the audited 124-second window, so the suite needs reliability and performance investigation even though targeted coverage exists.
+- The audited frontend lint run still reports errors and a large warning backlog; those should be resolved before treating the build as release-ready.
 
 ## Practical Next Steps
 

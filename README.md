@@ -12,17 +12,17 @@ The implementation repository stays private, but this site is public so recruite
 
 - A React 18 + TypeScript single-page app with route guards, TanStack Query, Axios token refresh, and bilingual UI support.
 - A Node.js + Express + TypeScript API organized around routes, Joi validation, controllers, services, and MongoDB collections.
-- Social product flows including posts, comments, follows, reposts, bookmarks, search, notifications, and direct messages.
+- Social product flows including posts, comments, follows, reposts, bookmarks, user search, notifications, creator analytics, and direct messages.
 - A hybrid realtime messaging design where REST remains the source of truth and Socket.IO keeps inbox state in sync.
 - Frontend automated coverage with Vitest, Testing Library, MSW, and Playwright.
 
 ## Screenshot Preview
 
-| Login | Home feed |
-|---|---|
+| Login                                                      | Home feed                                            |
+| ---------------------------------------------------------- | ---------------------------------------------------- |
 | ![Login screen](./static/img/screenshots/login-screen.png) | ![Home feed](./static/img/screenshots/home-feed.png) |
 
-## What The Public Docs Cover
+## What The Docs Cover
 
 - System overview and feature scope
 - Tech stack and architecture
@@ -30,10 +30,6 @@ The implementation repository stays private, but this site is public so recruite
 - Auth and security decisions
 - Deployment shape and environment categories
 - Testing strategy, current gaps, and future work
-
-## Why The Source Repo Is Private
-
-The private repository contains application code, configuration, and operational details that are not published publicly. This documentation repo focuses on the parts most useful in a portfolio review: system shape, interfaces, technical decisions, and current implementation boundaries.
 
 ## Run Docs Locally
 
